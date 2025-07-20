@@ -1,8 +1,7 @@
 streamlit==1.47.0
 streamlit-audio-recorder
 numpy
-scikit-learn
 joblib
-matplotlib
+scikit-learn
 librosa
 soundfile
