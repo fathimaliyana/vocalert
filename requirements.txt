@@ -302,3 +302,4 @@ numpy
 matplotlib
 joblib
 
+streamlit-audio-recorder
