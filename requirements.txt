@@ -1,7 +1,2 @@
 streamlit==1.47.0
 streamlit-audio-recorder
-numpy
-joblib
-scikit-learn
-librosa
-soundfile
