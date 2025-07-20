@@ -5,13 +5,12 @@ import joblib
 import base64
 from io import BytesIO
 import soundfile as sf
-import sounddevice as sd
+from streamlit_audio_recorder import audio_recorder
 from feature_extractor import extract_features
 
 # Load model
 model = joblib.load("svm_model.pkl")
 
-# Web-compatible beep sound (440Hz sine wave for 0.3s)
 def generate_beep():
     fs = 22050
     duration = 0.3
@@ -32,39 +31,21 @@ def get_beep_html(audio, samplerate):
 
 st.set_page_config(page_title="Vocal Strain Monitor", layout="centered")
 st.title("🎤 Vocal Strain Monitor (Web Compatible)")
-st.markdown("This app records 3-second audio clips and alerts you if vocal strain is detected.")
+st.markdown("Record a 3-second audio clip and get vocal strain detection.")
 
 status = st.empty()
 
-# Session state
-if "monitoring" not in st.session_state:
-    st.session_state.monitoring = False
+audio_bytes = audio_recorder()  # Browser-based audio recorder
 
-# Start and Stop buttons
-col1, col2 = st.columns(2)
-start_button = col1.button("▶️ Start Monitoring", key="start_button")
-stop_button = col2.button("⏹️ Stop Monitoring", key="stop_button")
+if audio_bytes:
+    status.info("🎙️ Processing audio...")
+    audio_np, samplerate = sf.read(BytesIO(audio_bytes))
 
-# Monitoring function
-def monitor():
-    duration = 3
-    fs = 22050
-    while st.session_state.monitoring:
-        status.info("🎙️ Recording...")
-        try:
-            audio = sd.rec(int(duration * fs), samplerate=fs, channels=1)
-            sd.wait()
-        except Exception as e:
-            status.error(f"🎙️ Recording failed: {e}")
-            break
+    features = extract_features(audio_np, samplerate)
 
-        audio = audio.flatten()
-        features = extract_features(audio, fs)
-
-        if len(features) != model.n_features_in_:
-            status.error(f"❌ Feature mismatch: Expected {model.n_features_in_}, got {len(features)}")
-            break
-
+    if len(features) != model.n_features_in_:
+        status.error(f"❌ Feature mismatch: Expected {model.n_features_in_}, got {len(features)}")
+    else:
         X = np.array(features).reshape(1, -1)
         prediction = model.predict(X)[0]
 
@@ -75,14 +56,5 @@ def monitor():
             st.markdown(html, unsafe_allow_html=True)
         else:
             status.success("✅ Voice is normal.")
-
-        time.sleep(0.5)
-
-# Handle buttons
-if start_button:
-    st.session_state.monitoring = True
-    monitor()
-
-if stop_button:
-    st.session_state.monitoring = False
-    status.warning("🛑 Monitoring stopped.")
+else:
+    status.info("🎙️ Click the record button above and speak for about 3 seconds.")
